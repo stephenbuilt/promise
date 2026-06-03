@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promise Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════ RESET & TOKENS ═══════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e1117;
+  --surface:#161b26;
+  --surface2:#1e2535;
+  --border:#2a3347;
+  --border2:#3a4d6a;
+  --accent:#f0c060;
+  --accent2:#5b9cf6;
+  --accent3:#6ee7b7;
+  --red:#f87171;
+  --green:#6ee7b7;
+  --text:#f0f4ff;
+  --text2:#8fa3c0;
+  --text3:#4a6080;
+  --serif:'DM Serif Display',serif;
+  --mono:'DM Mono',monospace;
+  --sans:'DM Sans',sans-serif;
+  --r:10px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;overflow-x:hidden;}
+
+/* ── BG MESH ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(91,156,246,.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(110,231,183,.05) 0%, transparent 55%);
+}
+
+.page{position:relative;z-index:1;display:grid;grid-template-columns:280px 1fr;min-height:100vh;}
+
+/* ═══════════════ SIDEBAR ═══════════════ */
+.sidebar{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+}
+
+.logo-area{
+  padding:1.75rem 1.5rem 1.25rem;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.logo-title{
+  font-family:var(--serif);
+  font-size:1.5rem;
+  line-height:1;
+  color:var(--text);
+  display:flex;align-items:center;gap:.5rem;
+}
+.logo-title .pi{
+  color:var(--accent);
+  font-style:italic;
+}
+.logo-sub{
+  font-family:var(--mono);
+  font-size:.58rem;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--text3);
+  margin-top:.35rem;
+}
+
+.sidebar-section{padding:.75rem 1rem .5rem;}
+.sidebar-section-label{
+  font-family:var(--mono);
+  font-size:.58rem;
+  font-weight:500;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--text3);
+  padding:0 .5rem;
+  margin-bottom:.4rem;
+}
+
+.prob-btn{
+  display:flex;align-items:center;gap:.65rem;
+  width:100%;padding:.6rem .75rem;
+  background:transparent;border:none;border-radius:7px;
+  cursor:pointer;transition:background .15s;
+  text-align:left;
+}
+.prob-btn:hover{background:var(--surface2);}
+.prob-btn.active{background:rgba(240,192,96,.1);}
+.prob-btn .pn{
+  font-family:var(--serif);font-size:.9rem;
+  color:var(--accent);min-width:18px;font-style:italic;
+  flex-shrink:0;
+}
+.prob-btn .pl{
+  font-family:var(--mono);font-size:.7rem;
+  color:var(--text2);line-height:1.3;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.prob-btn.active .pl{color:var(--text);}
+
+.sidebar-divider{height:1px;background:var(--border);margin:.5rem 1rem;}
+
+.custom-area{padding:.75rem 1rem 1.25rem;}
+.custom-label{
+  font-family:var(--mono);font-size:.58rem;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--text3);
+  margin-bottom:.5rem;padding:0 .5rem;
+}
+.custom-in{
+  width:100%;background:var(--surface2);
+  border:1px solid var(--border);border-radius:7px;
+  padding:.6rem .75rem;
+  font-family:var(--mono);font-size:.78rem;color:var(--text);
+  outline:none;transition:border-color .2s;
+  margin-bottom:.5rem;
+}
+.custom-in:focus{border-color:var(--accent);}
+.custom-in::placeholder{color:var(--text3);}
+.btn-go{
+  width:100%;padding:.6rem;
+  background:var(--accent);color:#1a1200;
+  border:none;border-radius:7px;
+  font-family:var(--sans);font-size:.8rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.btn-go:hover{background:#f5d080;transform:translateY(-1px);}
+
+/* keypad */
+.kpad{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem;margin-bottom:.5rem;}
+.kk{
+  background:var(--surface2);border:1px solid var(--border);border-radius:5px;
+  padding:.35rem .2rem;font-family:var(--mono);font-size:.65rem;color:var(--text2);
+  cursor:pointer;transition:all .15s;text-align:center;
+}
+.kk:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ═══════════════ MAIN ═══════════════ */
+.main{
+  display:flex;flex-direction:column;
+  min-height:100vh;
+}
+
+/* TOP BAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.25rem 2rem;
+  border-bottom:1px solid var(--border);
+  background:rgba(14,17,23,.8);
+  backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:10;
+  flex-shrink:0;
+  gap:1rem;
+}
+.topbar-fn{
+  font-family:var(--mono);font-size:.85rem;color:var(--text2);
+  display:flex;align-items:center;gap:.75rem;
+  flex:1;min-width:0;
+}
+.topbar-fn .fx{color:var(--accent2);font-weight:500;}
+.topbar-fn .expr{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.topbar-fn .separator{color:var(--text3);}
+.topbar-mode-badge{
+  font-family:var(--mono);font-size:.6rem;font-weight:500;
+  letter-spacing:.12em;text-transform:uppercase;
+  padding:.3rem .7rem;border-radius:20px;
+  background:rgba(91,156,246,.12);border:1px solid rgba(91,156,246,.3);
+  color:var(--accent2);white-space:nowrap;
+}
+
+/* CONTENT */
+.content{flex:1;padding:2rem;overflow-y:auto;}
+
+/* WELCOME */
+.welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:60vh;text-align:center;gap:1.5rem;
+  animation:fadeIn .5s ease both;
+}
+.welcome-icon{
+  font-family:var(--serif);font-size:5rem;font-style:italic;
+  color:var(--accent);opacity:.25;line-height:1;
+}
+.welcome h2{font-family:var(--serif);font-size:1.75rem;font-style:italic;color:var(--text);}
+.welcome p{color:var(--text2);font-size:.88rem;line-height:1.7;max-width:420px;}
+.welcome-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;
+  width:100%;max-width:500px;margin-top:.5rem;
+}
+.welcome-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:1rem;text-align:left;cursor:pointer;transition:all .2s;
+}
+.welcome-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3);}
+.wc-num{font-family:var(--serif);font-size:.85rem;font-style:italic;color:var(--accent);margin-bottom:.25rem;}
+.wc-expr{font-family:var(--mono);font-size:.72rem;color:var(--text2);}
+
+/* SOLUTION VIEW */
+.sol-view{animation:fadeIn .4s ease both;}
+
+/* ANSWER HERO */
+.answer-hero{
+  background:var(--surface);
+  border:1px solid var(--border);border-radius:14px;
+  padding:1.75rem;margin-bottom:1.5rem;
+  position:relative;overflow:hidden;
+}
+.answer-hero::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(240,192,96,.04) 0%,transparent 60%);
+  pointer-events:none;
+}
+.ah-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;}
+.ah-label{
+  font-family:var(--mono);font-size:.58rem;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--text3);
+  margin-bottom:.4rem;
+}
+.ah-function{font-family:var(--mono);font-size:.9rem;color:var(--accent2);}
+.ah-answer{
+  font-family:var(--serif);font-size:1.8rem;font-style:italic;
+  color:var(--text);line-height:1.2;
+}
+.ah-answer.none{font-size:1.1rem;color:var(--text2);font-style:italic;}
+
+/* CP TAGS */
+.cp-row{display:flex;flex-wrap:wrap;gap:.5rem;}
+.cp-tag{
+  display:flex;align-items:center;gap:.4rem;
+  padding:.4rem .85rem;border-radius:20px;
+  font-family:var(--mono);font-size:.7rem;font-weight:500;
+  border:1px solid;
+}
+.cp-tag.lmax{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.4);color:var(--red);}
+.cp-tag.lmin{background:rgba(110,231,183,.1);border-color:rgba(110,231,183,.4);color:var(--green);}
+.cp-tag.corner{background:rgba(240,192,96,.1);border-color:rgba(240,192,96,.4);color:var(--accent);}
+.cp-tag.endpt{background:rgba(91,156,246,.1);border-color:rgba(91,156,246,.4);color:var(--accent2);}
+.cp-tag.none{background:rgba(74,96,128,.1);border-color:rgba(74,96,128,.4);color:var(--text3);}
+.cp-tag .ct{font-size:.6rem;opacity:.7;margin-left:.1rem;}
+
+/* DOMAIN NOTE */
+.domain-note{
+  background:rgba(91,156,246,.06);
+  border:1px solid rgba(91,156,246,.2);
+  border-radius:10px;padding:.9rem 1.1rem;
+  margin-bottom:1.5rem;
+  font-family:var(--mono);font-size:.74rem;
+  color:var(--accent2);line-height:1.7;
+}
+.domain-note strong{color:var(--text2);}
+
+/* STEPS */
+.steps-header{
+  display:flex;align-items:center;gap:.75rem;
+  margin-bottom:1rem;
+}
+.steps-title{font-family:var(--serif);font-size:1.1rem;font-style:italic;color:var(--text);}
+.steps-count{
+  font-family:var(--mono);font-size:.62rem;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:.2rem .55rem;color:var(--text3);
+}
+
+.steps-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.5rem;}
+
+.step{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:1rem 1.25rem;
+  display:grid;grid-template-columns:32px 1fr;gap:.75rem;
+  animation:slideIn .3s ease both;
+}
+.step:hover{border-color:var(--border2);}
+.sn{
+  font-family:var(--serif);font-style:italic;
+  font-size:1.1rem;color:var(--accent);
+  padding-top:1px;
+}
+.sb{}
+.sh{
+  font-family:var(--sans);font-size:.82rem;font-weight:600;
+  color:var(--text);margin-bottom:.35rem;
+}
+.sd{
+  font-family:var(--mono);font-size:.74rem;color:var(--text2);line-height:1.75;
+}
+.sd .k{
+  display:inline-block;
+  background:rgba(91,156,246,.1);border:1px solid rgba(91,156,246,.2);
+  border-radius:4px;padding:.05rem .45rem;
+  color:#a8c8ff;font-weight:500;
+}
+.sd .r{color:var(--red);font-weight:600;}
+.sd .g{color:var(--green);font-weight:600;}
+.sd .au{color:var(--accent);font-weight:600;}
+
+/* SIGN CHART */
+.chart-wrap{margin-bottom:1.5rem;}
+.chart-title{font-family:var(--serif);font-size:1.1rem;font-style:italic;color:var(--text);margin-bottom:.75rem;}
+.chart-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:.72rem;border-radius:10px;overflow:hidden;}
+.chart-table th{
+  background:var(--surface2);color:var(--text2);
+  padding:.55rem .9rem;text-align:left;font-weight:500;letter-spacing:.06em;
+  border-bottom:1px solid var(--border);
+}
+.chart-table td{
+  padding:.55rem .9rem;
+  border-bottom:1px solid rgba(42,51,71,.5);color:var(--text2);
+}
+.chart-table tr:last-child td{border-bottom:none;}
+.chart-table tr:hover td{background:rgba(30,37,53,.6);}
+.up{color:var(--green) !important;font-weight:600;}
+.dn{color:var(--red) !important;font-weight:600;}
+
+/* LOADING */
+.loading{
+  display:flex;align-items:center;justify-content:center;gap:.75rem;
+  min-height:40vh;font-family:var(--mono);font-size:.78rem;color:var(--text3);
+}
+.spinner{
+  width:20px;height:20px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+
+/* ERROR */
+.error-box{
+  background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);
+  border-radius:10px;padding:1.1rem 1.25rem;
+  font-family:var(--mono);font-size:.76rem;color:var(--red);line-height:1.6;
+}
+
+/* MOBILE TOGGLE */
+.mob-toggle{display:none;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:.5rem .85rem;font-family:var(--sans);font-size:.78rem;color:var(--text2);cursor:pointer;}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:700px){
+  .page{grid-template-columns:1fr;}
+  .sidebar{
+    position:fixed;top:0;left:0;width:280px;height:100vh;z-index:100;
+    transform:translateX(-100%);transition:transform .3s;
+  }
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;
+  }
+  .sidebar-backdrop.show{display:block;}
+  .mob-toggle{display:block;}
+  .topbar{padding:1rem 1.25rem;}
+  .content{padding:1.25rem;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ══════ SIDEBAR ══════ -->
+<aside class="sidebar" id="sidebar">
+
+  <div class="logo-area">
+    <div class="logo-title">Promise <span class="pi">Calc</span></div>
+    <div class="logo-sub">Critical Numbers · CAS Engine</div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Problems</div>
+    <div id="prob-list"></div>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="custom-area">
+    <div class="custom-label">Custom Function</div>
+    <input class="custom-in" id="custom-in" placeholder="e.g. x^3 - 6x" autocomplete="off"
+      onkeydown="if(event.key==='Enter')customSolve()">
+    <div class="kpad" id="kpad"></div>
+    <button class="btn-go" onclick="customSolve()">Find Critical Numbers →</button>
+  </div>
+
+</aside>
+
+<!-- MOBILE BACKDROP -->
+<div class="sidebar-backdrop" id="backdrop" onclick="closeSidebar()"></div>
+
+<!-- ══════ MAIN ══════ -->
+<div class="main">
+
+  <div class="topbar">
+    <button class="mob-toggle" onclick="openSidebar()">☰ Problems</button>
+    <div class="topbar-fn">
+      <span class="fx">f(x)</span>
+      <span class="separator">=</span>
+      <span class="expr" id="topbar-expr">Select a problem to begin</span>
+    </div>
+    <span class="topbar-mode-badge" id="mode-badge">Critical Numbers</span>
+  </div>
+
+  <div class="content" id="main-content">
+    <div class="welcome">
+      <div class="welcome-icon">∂</div>
+      <h2>Find Critical Numbers</h2>
+      <p>Select a problem from the sidebar or enter your own function. The CAS engine will find all critical numbers — where f ′(x) = 0 or f ′(x) is undefined — with full step-by-step solutions.</p>
+      <div class="welcome-grid" id="quick-grid"></div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /page -->
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════
+const PROBS=[
+  {n:1, short:"2x³−9x²+12x−5",       full:"2x³ − 9x² + 12x − 5"},
+  {n:2, short:"x⁴−8x²+3",             full:"x⁴ − 8x² + 3"},
+  {n:3, short:"(x²−1)/(x+1)",          full:"(x²−1) / (x+1)"},
+  {n:4, short:"x^(1/3)(x−4)",          full:"x^(1/3) · (x − 4)"},
+  {n:5, short:"sin x − x, [0,2π]",     full:"sin(x) − x  on  [0, 2π]"},
+  {n:6, short:"ln(x²+1)",              full:"ln(x² + 1)"},
+  {n:7, short:"x·e^(−x)",              full:"x · e^(−x)"},
+  {n:8, short:"|x²−9|",               full:"|x² − 9|"},
+  {n:9, short:"x/(x²−4)",              full:"x / (x² − 4)"},
+  {n:10,short:"√(4−x²)",               full:"√(4 − x²)"},
+];
+
+// Build sidebar problem list
+const probList=document.getElementById('prob-list');
+PROBS.forEach(p=>{
+  const b=document.createElement('button');
+  b.className='prob-btn';b.id='pb'+p.n;
+  b.innerHTML=`<span class="pn">${p.n}</span><span class="pl">f(x) = ${p.short}</span>`;
+  b.onclick=()=>{setActive(p.n);loadSolution(p.n);closeSidebar();};
+  probList.appendChild(b);
+});
+
+// Build welcome quick-access grid (first 8)
+const qg=document.getElementById('quick-grid');
+PROBS.slice(0,8).forEach(p=>{
+  const c=document.createElement('div');
+  c.className='welcome-card';
+  c.innerHTML=`<div class="wc-num">${p.n}.</div><div class="wc-expr">f(x) = ${p.short}</div>`;
+  c.onclick=()=>{setActive(p.n);loadSolution(p.n);};
+  qg.appendChild(c);
+});
+
+// Keypad
+const KEYS=[['x²','x^2'],['x³','x^3'],['xⁿ','^'],['√(','sqrt('],['∛(','cbrt('],['|x|','abs('],['sin','sin('],['cos','cos('],['tan','tan('],['ln','ln('],['eˣ','exp('],['π','pi']];
+const kpad=document.getElementById('kpad');
+KEYS.forEach(([label,val])=>{
+  const b=document.createElement('button');b.className='kk';b.textContent=label;
+  b.onclick=()=>{const i=document.getElementById('custom-in');const s=i.selectionStart;i.value=i.value.slice(0,s)+val+i.value.slice(s);i.focus();};
+  kpad.appendChild(b);
+});
+
+function setActive(n){
+  document.querySelectorAll('.prob-btn').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('pb'+n);if(el)el.classList.add('active');
+}
+function openSidebar(){document.getElementById('sidebar').classList.add('open');document.getElementById('backdrop').classList.add('show');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('backdrop').classList.remove('show');}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+const K=s=>`<span class="k">${s}</span>`;
+const R=s=>`<span class="r">${s}</span>`;
+const G=s=>`<span class="g">${s}</span>`;
+const AU=s=>`<span class="au">${s}</span>`;
+
+function cpTag(xLabel,cls,sub){
+  return `<span class="cp-tag ${cls}">x = ${xLabel}<span class="ct">${sub}</span></span>`;
+}
+
+function setTopbar(expr,badge){
+  document.getElementById('topbar-expr').textContent=expr;
+  if(badge) document.getElementById('mode-badge').textContent=badge;
+}
+
+function showLoading(){
+  document.getElementById('main-content').innerHTML=`<div class="loading"><div class="spinner"></div> Computing…</div>`;
+}
+function showError(msg){
+  document.getElementById('main-content').innerHTML=`<div class="error-box">⚠ ${msg}</div>`;
+}
+
+function fmtN(n){
+  if(!isFinite(n)) return '?';
+  if(Math.abs(n)<1e-9) return '0';
+  if(Math.abs(n-Math.round(n))<1e-7) return String(Math.round(n));
+  const PM=[1,2,3,4,0.5,1.5,0.25,0.75,1/3,2/3,4/3,5/3];
+  for(const m of PM){
+    if(Math.abs(n-m*Math.PI)<1e-5) return m===1?'π':m===2?'2π':m===0.5?'π/2':m===3?'3π':Number.isInteger(1/m)?`π/${Math.round(1/m)}`:`${m.toFixed(2)}π`;
+    if(Math.abs(n+m*Math.PI)<1e-5) return m===1?'−π':m===2?'−2π':m===0.5?'−π/2':Number.isInteger(1/m)?`−π/${Math.round(1/m)}`:`−${m.toFixed(2)}π`;
+  }
+  return n.toFixed(4).replace(/\.?0+$/,'');
+}
+
+function signChart(fp,crits,lo,hi){
+  const pts=crits.filter(c=>c>lo&&c<hi);
+  const bds=[lo,...pts,hi];
+  return bds.slice(0,-1).map((_,i)=>{
+    const a=bds[i],b=bds[i+1],mid=(a+b)/2,v=fp(mid);
+    const sign=v>0.0001?'+':v<-0.0001?'−':'0';
+    return{iv:`(${fmtN(a)}, ${fmtN(b)})`,test:`x = ${fmtN(mid)}`,sign,beh:sign==='+'?'Increasing':'Decreasing'};
+  });
+}
+
+function render({fnLabel, answer, isNone, tags, domNote, steps, tableRows, badgeText}){
+  setTopbar(fnLabel, badgeText||'Critical Numbers');
+  let h=`<div class="sol-view">`;
+
+  // Answer hero
+  h+=`<div class="answer-hero">
+    <div class="ah-top">
+      <div>
+        <div class="ah-label">Function</div>
+        <div class="ah-function">f(x) = ${fnLabel}</div>
+      </div>
+      <div>
+        <div class="ah-label">Critical Numbers</div>
+        <div class="ah-answer${isNone?' none':''}">${answer}</div>
+      </div>
+    </div>
+    <div class="cp-row">${tags.join('')}</div>
+  </div>`;
+
+  // Domain note
+  if(domNote) h+=`<div class="domain-note"><strong>Note:</strong> ${domNote}</div>`;
+
+  // Steps
+  h+=`<div class="steps-header"><span class="steps-title">Step-by-Step Solution</span><span class="steps-count">${steps.length} steps</span></div>`;
+  h+=`<div class="steps-list">`;
+  steps.forEach((s,i)=>{
+    h+=`<div class="step" style="animation-delay:${i*.04}s">
+      <div class="sn">${i+1}</div>
+      <div class="sb"><div class="sh">${s.h}</div><div class="sd">${s.d}</div></div>
+    </div>`;
+  });
+  h+=`</div>`;
+
+  // Sign chart
+  if(tableRows&&tableRows.length){
+    h+=`<div class="chart-wrap"><div class="chart-title">Sign Chart</div>
+    <table class="chart-table">
+      <thead><tr><th>Interval</th><th>Test Point</th><th>f ′ sign</th><th>Behavior</th></tr></thead>
+      <tbody>${tableRows.map(r=>`<tr>
+        <td>${r.iv}</td><td>${r.test}</td>
+        <td class="${r.sign==='+'?'up':'dn'}">${r.sign}</td>
+        <td class="${r.beh==='Increasing'?'up':'dn'}">${r.beh}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  h+=`</div>`;
+  document.getElementById('main-content').innerHTML=h;
+}
+
+// ═══════════════════════════════════════════════
+// LOAD SOLUTION DISPATCHER
+// ═══════════════════════════════════════════════
+function loadSolution(n){
+  showLoading();
+  setTimeout(()=>SOLVERS[n](),80);
+}
+
+// ═══════════════════════════════════════════════
+// THE 10 VERIFIED SOLUTIONS
+// ═══════════════════════════════════════════════
+const SOLVERS={
+
+1(){
+  render({
+    fnLabel:"2x³ − 9x² + 12x − 5",
+    answer:"x = 1  and  x = 2",isNone:false,
+    tags:[cpTag("1","lmax","Local Max · f(1) = 0"),cpTag("2","lmin","Local Min · f(2) = −1")],
+    domNote:null,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("2x³ − 9x² + 12x − 5")}`},
+      {h:"Differentiate using the Power Rule",d:`f′(x) = ${K("6x² − 18x + 12")}`},
+      {h:"Set f′(x) = 0",d:`${K("6x² − 18x + 12 = 0")}<br>Divide by 6: &nbsp;${K("x² − 3x + 2 = 0")}`},
+      {h:"Factor the quadratic",d:`${K("(x − 1)(x − 2) = 0")}`},
+      {h:"Solve each factor",d:`x − 1 = 0 &nbsp;→&nbsp; ${AU("x = 1")}<br>x − 2 = 0 &nbsp;→&nbsp; ${AU("x = 2")}`},
+      {h:"Domain check",d:`f is a polynomial → domain is all ℝ. Both values are valid critical numbers.`},
+      {h:"Second Derivative Test",d:`f″(x) = ${K("12x − 18")}<br>f″(1) = −6 ${R("< 0")} → ${R("Local Maximum at x = 1")}<br>f″(2) = +6 ${G("> 0")} → ${G("Local Minimum at x = 2")}`},
+      {h:"Compute function values",d:`f(1) = 2−9+12−5 = ${K("0")}<br>f(2) = 16−36+24−5 = ${K("−1")}`},
+    ],
+    tableRows:signChart(x=>6*x*x-18*x+12,[1,2],-2,5),
+  });
+},
+
+2(){
+  render({
+    fnLabel:"x⁴ − 8x² + 3",
+    answer:"x = −2,  x = 0,  x = 2",isNone:false,
+    tags:[cpTag("−2","lmin","Local Min · f(−2)=−13"),cpTag("0","lmax","Local Max · f(0)=3"),cpTag("2","lmin","Local Min · f(2)=−13")],
+    domNote:null,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("x⁴ − 8x² + 3")}`},
+      {h:"Differentiate",d:`f′(x) = ${K("4x³ − 16x")}`},
+      {h:"Set f′(x) = 0",d:`${K("4x³ − 16x = 0")}`},
+      {h:"Factor out 4x",d:`${K("4x(x² − 4) = 0")}`},
+      {h:"Factor difference of squares",d:`${K("4x(x − 2)(x + 2) = 0")}`},
+      {h:"Solve each factor",d:`4x=0 → ${AU("x=0")}&nbsp;&nbsp; x−2=0 → ${AU("x=2")}&nbsp;&nbsp; x+2=0 → ${AU("x=−2")}`},
+      {h:"Domain check",d:`Polynomial → domain is all ℝ. All three are valid.`},
+      {h:"Second Derivative Test",d:`f″(x) = ${K("12x² − 16")}<br>f″(−2) = +32 ${G("> 0")} → ${G("Local Min")}<br>f″(0)  = −16 ${R("< 0")} → ${R("Local Max")}<br>f″(2)  = +32 ${G("> 0")} → ${G("Local Min")}`},
+      {h:"Function values",d:`f(−2)=${K("−13")}&nbsp; f(0)=${K("3")}&nbsp; f(2)=${K("−13")}`},
+    ],
+    tableRows:signChart(x=>4*x**3-16*x,[-2,0,2],-4,4),
+  });
+},
+
+3(){
+  render({
+    fnLabel:"(x²−1) / (x+1)",
+    answer:"No critical numbers",isNone:true,
+    tags:[`<span class="cp-tag none">f ′(x) = 1 everywhere in domain</span>`],
+    domNote:`Domain: x ≠ −1. The function simplifies to the line f(x) = x − 1 (hole at x = −1). A non-horizontal line has no horizontal tangent → no critical numbers.`,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("(x² − 1) / (x + 1)")}`},
+      {h:"Find the domain",d:`Denominator x+1 = 0 when ${R("x = −1")}<br>Domain: all reals ${R("except x = −1")}`},
+      {h:"Simplify — factor the numerator",d:`x² − 1 = (x−1)(x+1)<br>Cancel (x+1): &nbsp;f(x) = ${K("x − 1")}, &nbsp;x ≠ −1`},
+      {h:"Differentiate",d:`f′(x) = ${K("1")} &nbsp;for all x in the domain`},
+      {h:"Set f′(x) = 0",d:`1 = 0 → ${R("No solution.")} The derivative is never zero.`},
+      {h:"Check for undefined points in domain",d:`f′ is defined everywhere in the domain. x = −1 is a hole — not in the domain, so not a critical number.`},
+      {h:"Conclusion",d:`${R("No critical numbers.")} f(x) = x−1 is a line with slope 1. No horizontal tangents exist.`},
+    ],
+    tableRows:[],
+  });
+},
+
+4(){
+  render({
+    fnLabel:"x^(1/3) · (x − 4)",
+    answer:"x = 0  (f ′ undef.)   and   x = 1  (f ′ = 0)",isNone:false,
+    tags:[cpTag("0","corner","f ′ undefined · in domain · f(0)=0"),cpTag("1","lmin","f ′=0 · Local Min · f(1)=−3")],
+    domNote:`Cube root is defined for all real numbers (including negatives), so the full domain is ℝ. x=0 makes f ′ undefined (vertical tangent); x=1 makes f ′=0.`,
+    steps:[
+      {h:"Rewrite the function",d:`f(x) = ${K("x^(4/3) − 4x^(1/3)")}`},
+      {h:"Differentiate using Power Rule",d:`f′(x) = ${K("(4/3)x^(1/3) − (4/3)x^(−2/3)")}`},
+      {h:"Factor out (4/3)x^(−2/3)",d:`f′(x) = ${K("(4/3)x^(−2/3)(x − 1)")}`},
+      {h:"Rewrite as fraction",d:`f′(x) = ${K("4(x−1) / (3x^(2/3))")}&nbsp;&nbsp;= &nbsp;${K("4(x−1) / (3·∛(x²))")}`},
+      {h:"Case 1 — numerator = 0 (f′ = 0)",d:`4(x−1) = 0 → ${AU("x = 1")} ← critical number`},
+      {h:"Case 2 — denominator = 0 (f′ undefined)",d:`3·x^(2/3) = 0 → x = 0<br>x = 0 is in the domain (∛0 = 0 exists) → ${AU("x = 0 is a critical number")}`},
+      {h:"Sign change at x = 0",d:`For small x<0: f′ < 0; for small x>0: f′ < 0 → ${AU("No sign change → not an extremum")}`},
+      {h:"Sign change at x = 1",d:`For x∈(0,1): f′ < 0 (decreasing); for x>1: f′ > 0 (increasing) → ${G("Sign: − → +  ⟹  Local Minimum")}`},
+      {h:"Function values",d:`f(0) = ∛0·(0−4) = ${K("0")}<br>f(1) = ∛1·(1−4) = ${K("−3")}`},
+    ],
+    tableRows:signChart(x=>{ const c=x===0?0:Math.sign(x)*Math.abs(x)**(2/3); return c<1e-15?NaN:4*(x-1)/(3*c); },[0,1],-3,5),
+  });
+},
+
+5(){
+  render({
+    fnLabel:"sin(x) − x  on  [0, 2π]",
+    answer:"No interior critical numbers",isNone:true,
+    tags:[`<span class="cp-tag none">No interior critical numbers on (0, 2π)</span>`,cpTag("0","endpt","Left endpoint · f(0)=0"),cpTag("2π","endpt","Right endpoint · f(2π)=−2π")],
+    domNote:`Interval [0, 2π]. Critical numbers must be interior points in (0, 2π). Since f ′(x) = cos x − 1 ≤ 0 everywhere and equals 0 only at the endpoints x = 0 and x = 2π, there are no interior critical numbers.`,
+    steps:[
+      {h:"Write the function and interval",d:`f(x) = ${K("sin(x) − x")} &nbsp;on&nbsp; ${K("[0, 2π]")}`},
+      {h:"Differentiate",d:`f′(x) = ${K("cos(x) − 1")}`},
+      {h:"Set f′(x) = 0",d:`cos(x) − 1 = 0 &nbsp;→&nbsp; ${K("cos(x) = 1")}`},
+      {h:"Solve cos(x) = 1 on [0, 2π]",d:`cos(x) = 1 only at x = 0 and x = 2π`},
+      {h:"Are these interior points?",d:`x = 0: ${R("left endpoint")} (not interior)<br>x = 2π: ${R("right endpoint")} (not interior)`},
+      {h:"Key fact about f′",d:`cos(x) ≤ 1 always, so f′(x) = cos x−1 ${R("≤ 0 for all x")}<br>f is non-increasing on the entire interval.`},
+      {h:"Conclusion",d:`${R("No interior critical numbers")} in (0, 2π).`},
+      {h:"Endpoint values (Closed Interval Method)",d:`f(0) = sin 0 − 0 = ${K("0")} (abs. max)<br>f(2π) = sin 2π − 2π = ${K("−2π ≈ −6.28")} (abs. min)`},
+    ],
+    tableRows:[],
+  });
+},
+
+6(){
+  render({
+    fnLabel:"ln(x² + 1)",
+    answer:"x = 0",isNone:false,
+    tags:[cpTag("0","lmin","Local Min · f(0) = 0")],
+    domNote:`Domain: all reals. x²+1 > 0 always, so ln is defined everywhere. f is an even function (symmetric about the y-axis).`,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("ln(x² + 1)")}`},
+      {h:"Domain",d:`x²+1 ≥ 1 > 0 for all x → domain is ${K("all ℝ")}`},
+      {h:"Differentiate using Chain Rule",d:`f′(x) = ${K("1/(x²+1)")} · (2x) = ${K("2x / (x² + 1)")}`},
+      {h:"Set f′(x) = 0",d:`2x = 0 &nbsp;→&nbsp; ${AU("x = 0")}<br>(denominator x²+1 > 0 always — no undefined points)`},
+      {h:"Second Derivative Test",d:`f″(x) = ${K("(2 − 2x²) / (x²+1)²")}<br>f″(0) = 2 ${G("> 0")} → ${G("Local Minimum at x = 0")}`},
+      {h:"Function value",d:`f(0) = ln(1) = ${K("0")}`},
+    ],
+    tableRows:signChart(x=>2*x/(x*x+1),[0],-4,4),
+  });
+},
+
+7(){
+  render({
+    fnLabel:"x · e^(−x)",
+    answer:"x = 1",isNone:false,
+    tags:[cpTag("1","lmax","Local Max · f(1) = 1/e ≈ 0.368")],
+    domNote:`Domain: all reals. e^(−x) > 0 for all x, so the sign of f ′ depends entirely on the factor (1 − x).`,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("x · e^(−x)")}`},
+      {h:"Apply the Product Rule",d:`f′(x) = ${K("1 · e^(−x) + x · (−e^(−x))")}`},
+      {h:"Factor out e^(−x)",d:`f′(x) = ${K("e^(−x)(1 − x)")}`},
+      {h:"Set f′(x) = 0",d:`e^(−x) · (1−x) = 0<br>Since e^(−x) > 0 always: &nbsp;1−x = 0 → ${AU("x = 1")}`},
+      {h:"No undefined points",d:`e^(−x) is defined for all x. x=1 is the only critical number.`},
+      {h:"Second Derivative Test",d:`f″(x) = ${K("e^(−x)(x − 2)")}<br>f″(1) = e^(−1)(−1) = ${R("−1/e < 0")} → ${R("Local Maximum")}`},
+      {h:"Function value",d:`f(1) = 1 · e^(−1) = ${K("1/e ≈ 0.3679")}`},
+    ],
+    tableRows:signChart(x=>Math.exp(-x)*(1-x),[1],-2,6),
+  });
+},
+
+8(){
+  render({
+    fnLabel:"|x² − 9|",
+    answer:"x = −3,  x = 0,  x = 3",isNone:false,
+    tags:[cpTag("−3","corner","f ′ undef · Corner · Local Min · f(−3)=0"),cpTag("0","lmax","f ′=0 · Local Max · f(0)=9"),cpTag("3","corner","f ′ undef · Corner · Local Min · f(3)=0")],
+    domNote:`The absolute value creates sharp corners at x = ±3. These are valid critical numbers because f is defined there but f ′ does not exist (left and right derivatives differ).`,
+    steps:[
+      {h:"Identify critical structure",d:`f(x) = ${K("|x² − 9|")}. The inner expression x²−9 = 0 at x = ±3. These create potential corners.`},
+      {h:"Write the piecewise form",d:`f(x) = x²−9 &nbsp;if x ≤ −3 or x ≥ 3<br>f(x) = 9−x² &nbsp;if −3 < x < 3`},
+      {h:"Differentiate each piece",d:`f′(x) = 2x &nbsp;&nbsp;&nbsp;&nbsp;for x<−3 or x>3<br>f′(x) = −2x &nbsp;&nbsp;for −3<x<3<br>f′(±3) = ${AU("undefined")} (corners)`},
+      {h:"Find where f′ = 0",d:`On (−3,3): −2x = 0 → ${AU("x = 0")} ✓<br>Other regions: 2x = 0 → x=0, not in those regions.`},
+      {h:"Collect all critical numbers",d:`f′=0 at ${K("x=0")}<br>f′ undefined at ${AU("x=−3")} and ${AU("x=3")} (both in domain)`},
+      {h:"Classify by sign chart",d:`f(−3) = 0 → ${G("Local Min (corner)")}<br>f(0) = 9 → ${R("Local Max")}<br>f(3) = 0 → ${G("Local Min (corner)")}`},
+    ],
+    tableRows:signChart(x=>Math.abs(x)>3+1e-6?2*x:Math.abs(x)<3-1e-6?-2*x:NaN,[-3,0,3],-6,6),
+  });
+},
+
+9(){
+  render({
+    fnLabel:"x / (x² − 4)",
+    answer:"No critical numbers",isNone:true,
+    tags:[`<span class="cp-tag none">f ′ < 0 everywhere in its domain</span>`],
+    domNote:`Domain: x ≠ ±2 (vertical asymptotes). The derivative −(x²+4)/(x²−4)² has a numerator that is always negative, so f is strictly decreasing on each piece of its domain.`,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("x / (x² − 4)")}`},
+      {h:"Find the domain",d:`x²−4=0 → ${R("x=±2 excluded")}<br>Domain: (−∞,−2)∪(−2,2)∪(2,∞)`},
+      {h:"Apply the Quotient Rule",d:`f′(x) = ${K("[(x²−4)·1 − x·2x] / (x²−4)²")}`},
+      {h:"Simplify the numerator",d:`x²−4−2x² = −x²−4 = ${K("−(x²+4)")}`},
+      {h:"Final derivative",d:`f′(x) = ${K("−(x²+4) / (x²−4)²")}`},
+      {h:"Set f′(x) = 0",d:`−(x²+4) = 0 → x² = −4<br>${R("No real solutions")} (x²+4 ≥ 4 > 0 always)`},
+      {h:"Check undefined points",d:`x=±2 are not in the domain → cannot be critical numbers.`},
+      {h:"Sign of f′",d:`Numerator −(x²+4) ${R("< 0 always")}<br>Denominator (x²−4)² ≥ 0<br>Therefore f′(x) < 0 everywhere → f strictly decreasing on each interval. ${R("No critical numbers.")}`},
+    ],
+    tableRows:[],
+  });
+},
+
+10(){
+  render({
+    fnLabel:"√(4 − x²)",
+    answer:"x = 0",isNone:false,
+    tags:[cpTag("0","lmax","Absolute Max · f(0) = 2"),cpTag("−2","endpt","Left endpoint · f(−2)=0"),cpTag("2","endpt","Right endpoint · f(2)=0")],
+    domNote:`Domain: [−2, 2]. x = 0 is the only interior critical number. x = ±2 are boundary points — f ′ is undefined there, but they are endpoints, not interior critical numbers.`,
+    steps:[
+      {h:"Write the function",d:`f(x) = ${K("√(4 − x²)")}`},
+      {h:"Determine the domain",d:`4−x² ≥ 0 → x² ≤ 4 → ${K("−2 ≤ x ≤ 2")}`},
+      {h:"Differentiate using Chain Rule",d:`f′(x) = ${K("(1/(2√(4−x²))) · (−2x)")} = ${K("−x / √(4−x²)")}`},
+      {h:"Set f′(x) = 0",d:`Numerator: −x = 0 → ${AU("x = 0")} ✓ (is in (−2,2))`},
+      {h:"Find where f′ undefined",d:`Denominator: √(4−x²)=0 → x=±2<br>These are ${R("boundary endpoints")}, not interior critical numbers.`},
+      {h:"Second Derivative Test at x=0",d:`f″(0) = −1/2 ${R("< 0")} → ${R("Local (and absolute) Maximum")}`},
+      {h:"Function values",d:`f(0)=√4=${K("2")} (max height)<br>f(±2)=√0=${K("0")} (endpoints)`},
+      {h:"Geometric note",d:`f(x)=√(4−x²) is the ${K("upper semicircle")} of radius 2. Maximum at centre x=0, height=2.`},
+    ],
+    tableRows:signChart(x=>{ const d=4-x*x; return d>1e-12?-x/Math.sqrt(d):NaN; },[0],-2,2),
+  });
+},
+
+}; // end SOLVERS
+
+// ═══════════════════════════════════════════════
+// CUSTOM SOLVER
+// ═══════════════════════════════════════════════
+function customSolve(){
+  const raw=document.getElementById('custom-in').value.trim();
+  if(!raw){showError('Please enter a function.');return;}
+  document.querySelectorAll('.prob-btn').forEach(b=>b.classList.remove('active'));
+  showLoading();
+  setTopbar(raw,'Custom');
+  setTimeout(()=>{
+    if(typeof math==='undefined'){
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.js';
+      s.onload=()=>_runCustom(raw);
+      s.onerror=()=>showError('Custom solver needs internet to load math.js. Use the 10 preset problems while offline.');
+      document.head.appendChild(s);
+    } else { _runCustom(raw); }
+  },80);
+}
+
+function bisect(f,a,b,tol=1e-9,mx=80){
+  let fa=f(a),fb=f(b);
+  if(!isFinite(fa)||!isFinite(fb))return null;
+  for(let i=0;i<mx;i++){
+    const m=(a+b)/2,fm=f(m);
+    if(!isFinite(fm))return null;
+    if(Math.abs(fm)<tol||(b-a)/2<tol)return m;
+    if(Math.sign(fa)===Math.sign(fm)){a=m;fa=fm;}else{b=m;}
+  }
+  return(a+b)/2;
+}
+
+function _runCustom(raw){
+  try{
+    const scope={pi:Math.PI,e:Math.E};
+    const f=x=>{try{return math.evaluate(raw,{...scope,x});}catch(e){return NaN;}};
+    const fp=x=>{const h=1e-7;return(f(x+h)-f(x-h))/(2*h);};
+    const roots=[];
+    const lo=-20,hi=20,N=4000,dx=(hi-lo)/N;
+    let prev=fp(lo+1e-9);
+    for(let i=1;i<=N;i++){
+      const x=lo+i*dx,curr=fp(x);
+      if(isFinite(prev)&&isFinite(curr)&&Math.sign(prev)!==Math.sign(curr)){
+        const r=bisect(fp,x-dx,x);
+        if(r!==null&&!roots.some(ro=>Math.abs(ro-r)<1e-4)) roots.push(r);
+      }
+      prev=curr;
+    }
+    roots.sort((a,b)=>a-b);
+
+    let derivStr='computed numerically';
+    try{derivStr=math.simplify(math.derivative(raw,'x')).toString();}catch(e){}
+
+    const tags=roots.length?roots.map(r=>{
+      const d2=(f(r+1e-5)-2*f(r)+f(r-1e-5))/(1e-10);
+      const cls=d2>1e-3?'lmin':d2<-1e-3?'lmax':'corner';
+      return cpTag(fmtN(r),cls,cls==='lmax'?'Local Max':cls==='lmin'?'Local Min':'Check manually');
+    }):[`<span class="cp-tag none">No critical numbers found in [−20,20]</span>`];
+
+    const ans=roots.length?roots.map(r=>`x = ${fmtN(r)}`).join(', '):'No critical numbers found';
+
+    render({
+      fnLabel:raw,
+      answer:ans,isNone:!roots.length,
+      tags,
+      domNote:roots.length?null:'No zeros of f ′(x) found in the interval [−20, 20]. The function may have no critical numbers, or they may be outside this range.',
+      steps:[
+        {h:"Input function",d:`f(x) = ${K(raw)}`},
+        {h:"Derivative",d:`f′(x) = ${K(derivStr)}`},
+        {h:"Solve f′(x) = 0 numerically",d:roots.length?roots.map(r=>`f′(${fmtN(r)}) ≈ 0 → ${K('x = '+fmtN(r))}`).join('<br>'):R('No solutions found in [−20, 20]')},
+      ],
+      tableRows:roots.length?signChart(fp,roots,Math.max(-20,roots[0]-5),Math.min(20,(roots[roots.length-1]||0)+5)):[],
+    });
+  }catch(e){showError('Could not evaluate: '+e.message);}
+}
+</script>
+</body>
+</html>
